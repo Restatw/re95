@@ -1,0 +1,35 @@
+{
+  "nav": {
+    "cancel": "取消",
+    "new": "新增"
+  },
+  "search": {
+    "placeholder": "Search..."
+  },
+  "board": {
+    "idPlaceholder": "版面 ID（如 music）",
+    "namePlaceholder": "版面名稱（如 音樂）",
+    "creating": "建立中...",
+    "create": "建立",
+    "noResult": "無符合「{query}」的版面",
+    "noThreads": "尚無帖子",
+    "footer": "ID: {id}"
+  },
+  "thread": {
+    "noResult": "無符合「{query}」的帖子",
+    "breadcrumb": "討論串 #{id}",
+    "notFound": "帖子不存在"
+  },
+  "post": {
+    "newThread": "發新帖",
+    "reply": "回文",
+    "name": "名稱",
+    "content": "內容",
+    "image": "圖片",
+    "submitting": "送出中...",
+    "submit": "送出",
+    "omitted": "省略了 {count} 篇回覆",
+    "viewAll": "[查看全部 {count} 回覆]",
+    "replyBtn": "回覆"
+  }
+}

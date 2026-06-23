@@ -1,0 +1,35 @@
+{
+  "nav": {
+    "cancel": "Cancel",
+    "new": "New"
+  },
+  "search": {
+    "placeholder": "Search..."
+  },
+  "board": {
+    "idPlaceholder": "Board ID (e.g. music)",
+    "namePlaceholder": "Board name (e.g. Music)",
+    "creating": "Creating...",
+    "create": "Create",
+    "noResult": "No boards matching \"{query}\"",
+    "noThreads": "No threads yet",
+    "footer": "ID: {id}"
+  },
+  "thread": {
+    "noResult": "No threads matching \"{query}\"",
+    "breadcrumb": "Thread #{id}",
+    "notFound": "Thread not found"
+  },
+  "post": {
+    "newThread": "New Thread",
+    "reply": "Reply",
+    "name": "Name",
+    "content": "Content",
+    "image": "Image",
+    "submitting": "Submitting...",
+    "submit": "Submit",
+    "omitted": "{count} reply omitted | {count} replies omitted",
+    "viewAll": "[View all {count} replies]",
+    "replyBtn": "Reply"
+  }
+}
