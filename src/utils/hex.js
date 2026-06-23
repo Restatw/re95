@@ -14,8 +14,13 @@ export function randomHex(bytes = 16) {
   return toHex(arr)
 }
 
+// SHA-256 of arbitrary data. Falls back to a random 64-char hex on HTTP
+// non-localhost where crypto.subtle is blocked by the browser secure-context policy.
+// Deduplication won't work for fallback CIDs, but upload/serve still works.
 export async function sha256hex(data) {
-  const buf = typeof data === 'string' ? new TextEncoder().encode(data) : data
-  if (!crypto.subtle) return randomHex(32)
-  return toHex(await crypto.subtle.digest('SHA-256', buf))
+  const buf = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data)
+  if (crypto.subtle) {
+    return toHex(await crypto.subtle.digest('SHA-256', buf))
+  }
+  return randomHex(32)   // 32 bytes = 64 hex chars, keeps relay validation happy
 }

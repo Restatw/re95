@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { db } from '../composables/useDB'
-import { toHex, randomHex } from '../utils/hex'
+import { sha256hex, randomHex } from '../utils/hex'
 import { useIdentityStore } from './identityStore'
 import { relayPush, relayUploadMedia, RELAY_MEDIA_URL } from '../composables/useSync'
 
@@ -62,9 +62,7 @@ export const usePostsStore = defineStore('posts', () => {
     let mediaCid = null
     if (file) {
       const buf = await file.arrayBuffer()
-      mediaCid = crypto.subtle
-        ? toHex(await crypto.subtle.digest('SHA-256', buf))
-        : randomHex(16)
+      mediaCid = await sha256hex(buf)
       if (!await db.media.get(mediaCid)) {
         await db.media.put({ cid: mediaCid, blob: file, mimeType: file.type })
       }
