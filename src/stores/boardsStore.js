@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { db } from '../composables/useDB'
 
+const RELAY = import.meta.env.VITE_RELAY_URL ?? '/api'
+
 const DEFAULT_BOARDS = [
   { id: 'b',       name: '隨機',     createdAt: 0 },
   { id: 'img',     name: '圖片',     createdAt: 1 },
@@ -49,6 +51,20 @@ export const useBoardsStore = defineStore('boards', () => {
     const existing = new Set((await db.boards.toArray()).map(b => b.id))
     const missing = DEFAULT_BOARDS.filter(b => !existing.has(b.id))
     if (missing.length) await db.boards.bulkPut(missing)
+
+    // Pull custom boards from relay and merge into local DB
+    try {
+      const res = await fetch(`${RELAY}/boards`)
+      if (res.ok) {
+        const remote = await res.json()
+        const localIds = new Set((await db.boards.toArray()).map(b => b.id))
+        const newBoards = remote
+          .filter(b => !localIds.has(b.id))
+          .map(b => ({ id: b.id, name: b.name, emoji: b.emoji ?? null, createdAt: b.created_at ?? Date.now() }))
+        if (newBoards.length) await db.boards.bulkPut(newBoards)
+      }
+    } catch {}
+
     boards.value = await db.boards.orderBy('createdAt').toArray()
   }
 
@@ -57,8 +73,16 @@ export const useBoardsStore = defineStore('boards', () => {
     if (!slug) throw new Error('版面 ID 只能包含英文小寫、數字、-、_')
     if (!name.trim()) throw new Error('版面名稱不可為空')
     if (await db.boards.get(slug)) throw new Error(`/${slug}/ 已存在`)
-    await db.boards.put({ id: slug, name: name.trim(), emoji: emoji?.trim() || null, createdAt: Date.now() })
+    const board = { id: slug, name: name.trim(), emoji: emoji?.trim() || null, createdAt: Date.now() }
+    await db.boards.put(board)
     boards.value = await db.boards.orderBy('createdAt').toArray()
+
+    // Sync to relay (fire-and-forget)
+    fetch(`${RELAY}/boards`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(board),
+    }).catch(() => {})
   }
 
   return { boards, load, create }
