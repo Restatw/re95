@@ -55,7 +55,7 @@ export const usePostsStore = defineStore('posts', () => {
     currentThread.value = await Promise.all(all.map(hydrate))
   }
 
-  async function submit({ board, threadId, name, title, content, tags, file, attachIdentity }) {
+  async function submit({ board, threadId, name, title, content, tags, file, attachIdentity, cfToken }) {
     const identityStore = useIdentityStore()
     const id = randomHex(16)
 
@@ -108,7 +108,7 @@ export const usePostsStore = defineStore('posts', () => {
             }
           }
         }
-        await relayPush({ ...post, mediaCid: relayCid })
+        await relayPush({ ...post, mediaCid: relayCid }, cfToken)
       } catch (e) {
         console.warn('[sync] relay push failed:', e.message)
       }

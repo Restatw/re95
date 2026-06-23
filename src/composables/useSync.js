@@ -116,11 +116,11 @@ export const RELAY_MEDIA_URL = (cid) =>
 
 export function getMediaSynced() { return state.mediaSynced }
 
-export async function relayPush(post) {
+export async function relayPush(post, cfToken) {
   const res = await fetch(`${RELAY}/posts`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(post),
+    body:    JSON.stringify(cfToken ? { ...post, cfToken } : post),
   })
   if (!res.ok && res.status !== 409) {
     throw new Error(`relay POST /posts → ${res.status}`)

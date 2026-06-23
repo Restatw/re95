@@ -1,6 +1,6 @@
 <template>
   <div class="post-form">
-    <details ref="detailsEl">
+    <details ref="detailsEl" @toggle="onToggle">
       <summary>{{ isNewThread ? t('post.newThread') : t('post.reply') }}</summary>
       <form @submit.prevent="submit">
         <div class="form-row">
@@ -28,10 +28,14 @@
           <input v-model="tagsInput" type="text" :placeholder="t('post.tagsHint')" maxlength="100" />
         </div>
 
+        <div v-if="SITE_KEY" class="form-row turnstile-row">
+          <div ref="turnstileEl"></div>
+        </div>
+
         <div v-if="error" class="form-error">{{ error }}</div>
 
         <div class="form-actions">
-          <button type="submit" :disabled="submitting">
+          <button type="submit" :disabled="submitting || (SITE_KEY && !cfToken)">
             {{ submitting ? t('post.submitting') : t('post.submit') }}
           </button>
         </div>
@@ -48,6 +52,8 @@ import { usePostsStore } from '../stores/postsStore'
 
 const { t } = useI18n()
 
+const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? ''
+
 const props = defineProps({
   board:       { type: String, required: true },
   threadId:    { type: String, default: null },
@@ -63,17 +69,56 @@ const content    = ref('')
 const tagsInput  = ref('')
 const file       = ref(null)
 const submitting = ref(false)
-const error          = ref('')
-const detailsEl      = ref(null)
-const textareaEl     = ref(null)
-const fileInput      = ref(null)
+const error      = ref('')
+const cfToken    = ref('')
+
+const detailsEl  = ref(null)
+const textareaEl = ref(null)
+const fileInput  = ref(null)
+const turnstileEl = ref(null)
+
+let widgetId = null
 
 const identityStore = useIdentityStore()
 const postsStore    = usePostsStore()
 
+function _loadTurnstileScript() {
+  if (!SITE_KEY || document.getElementById('cf-turnstile-script')) return
+  const s = document.createElement('script')
+  s.id = 'cf-turnstile-script'
+  s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+  s.async = true
+  s.defer = true
+  document.head.appendChild(s)
+}
+
+function _renderTurnstile() {
+  if (!SITE_KEY || !turnstileEl.value || widgetId !== null) return
+  if (!window.turnstile) return
+  widgetId = window.turnstile.render(turnstileEl.value, {
+    sitekey: SITE_KEY,
+    callback:           token => { cfToken.value = token },
+    'expired-callback': ()    => { cfToken.value = '' },
+    'error-callback':   ()    => { cfToken.value = '' },
+  })
+}
+
+function _tryRender() {
+  if (window.turnstile) _renderTurnstile()
+  else setTimeout(_tryRender, 100)
+}
+
+function onToggle() {
+  if (SITE_KEY && detailsEl.value?.open) _tryRender()
+}
+
 onMounted(() => {
   identityStore.init()
   if (props.defaultOpen && detailsEl.value) detailsEl.value.open = true
+  if (SITE_KEY) {
+    _loadTurnstileScript()
+    if (props.defaultOpen) _tryRender()
+  }
 })
 
 function onFile(e) {
@@ -95,6 +140,7 @@ async function submit() {
       tags,
       file:           file.value,
       attachIdentity: true,
+      cfToken:        cfToken.value || undefined,
     })
     name.value = ''
     title.value = ''
@@ -102,6 +148,10 @@ async function submit() {
     tagsInput.value = ''
     file.value = null
     if (fileInput.value) fileInput.value.value = ''
+    if (SITE_KEY && widgetId !== null) {
+      window.turnstile?.reset(widgetId)
+      cfToken.value = ''
+    }
     emit('posted', post)
   } catch (e) {
     console.error('[PostForm] submit error:', e)
@@ -136,4 +186,5 @@ textarea { resize: vertical; }
 .form-actions { display: flex; justify-content: flex-end; }
 button[type="submit"] { background: #8b98e8; color: white; border: none; padding: 0.4rem 1.2rem; cursor: pointer; font-size: 0.9rem; }
 button[type="submit"]:disabled { opacity: 0.6; cursor: not-allowed; }
+.turnstile-row { padding: 0.2rem 0; }
 </style>
