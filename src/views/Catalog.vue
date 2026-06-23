@@ -56,11 +56,12 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { usePostsStore } from '../stores/postsStore'
+import { useSync } from '../composables/useSync'
 import PostForm from '../components/PostForm.vue'
 
 const { t } = useI18n()
@@ -68,6 +69,7 @@ const route = useRoute()
 const board = route.params.board
 const postsStore = usePostsStore()
 const { threads } = storeToRefs(postsStore)
+const { lastPost, subscribe, pull } = useSync()
 
 const query       = ref('')
 const searching   = ref(false)
@@ -99,7 +101,16 @@ async function onPosted() {
   await postsStore.loadBoard(board)
 }
 
-onMounted(() => postsStore.loadBoard(board))
+watch(lastPost, post => {
+  if (post?.board === board) postsStore.loadBoard(board)
+})
+
+onMounted(async () => {
+  await postsStore.loadBoard(board)
+  subscribe(board)
+  const n = await pull(board)
+  if (n) postsStore.loadBoard(board)
+})
 </script>
 
 <style scoped>

@@ -40,11 +40,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { usePostsStore } from '../stores/postsStore'
+import { useSync } from '../composables/useSync'
 import PostForm from '../components/PostForm.vue'
 import ThreadCard from '../components/ThreadCard.vue'
 import Pagination from '../components/Pagination.vue'
@@ -55,6 +56,7 @@ const route = useRoute()
 const board = route.params.board
 const postsStore = usePostsStore()
 const { threads } = storeToRefs(postsStore)
+const { lastPost, subscribe, pull } = useSync()
 
 const PAGE_SIZE = 10
 
@@ -89,7 +91,17 @@ async function load() {
   await postsStore.loadBoard(board)
 }
 
-onMounted(load)
+// Reload board when a new post arrives via WebSocket for this board
+watch(lastPost, post => {
+  if (post?.board === board) load()
+})
+
+onMounted(async () => {
+  await load()
+  subscribe(board)
+  const n = await pull(board)
+  if (n) load()
+})
 </script>
 
 <style scoped>

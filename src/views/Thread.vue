@@ -23,11 +23,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { usePostsStore } from '../stores/postsStore'
+import { useSync } from '../composables/useSync'
 import Post from '../components/Post.vue'
 import PostForm from '../components/PostForm.vue'
 
@@ -41,6 +42,7 @@ const shortId = threadId.slice(0, 8)
 const postsStore = usePostsStore()
 const { currentThread } = storeToRefs(postsStore)
 const postFormRef = ref(null)
+const { lastPost, subscribe, pull } = useSync()
 
 const backLinksMap = computed(() => {
   const map = {}
@@ -60,8 +62,16 @@ async function load() {
   await postsStore.loadThread(board, threadId)
 }
 
+// Reload thread when a reply or a new OP matching this thread arrives via WS
+watch(lastPost, post => {
+  if (post?.threadId === threadId || post?.id === threadId) load()
+})
+
 onMounted(async () => {
   await load()
+  subscribe(board)
+  const n = await pull(board)
+  if (n) load()
   postFormRef.value?.open()
 })
 </script>
