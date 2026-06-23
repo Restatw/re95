@@ -6,16 +6,17 @@ const RELAY = import.meta.env.VITE_RELAY_URL ?? '/api'
 // ── Singleton WS state ────────────────────────────────────────────────────────
 
 const state = reactive({
-  online:    false,
-  syncing:   false,
-  error:     null,
-  lastPost:  null,   // most recent post written (from WS push or delta pull)
+  online:      false,
+  syncing:     false,
+  error:       null,
+  lastPost:    null,   // most recent post written (from WS push or delta pull)
+  mediaSynced: 0,      // increments each time back-fill uploads ≥1 blob
 })
 
 let _ws             = null
 let _reconnectTimer = null
 let _mediaSyncTimer = null
-const _boards       = new Set()   // boards we're subscribed to this session
+const _boards       = new Set()
 
 function _wsUrl() {
   if (RELAY.startsWith('/')) {
@@ -31,7 +32,6 @@ function _send(msg) {
   if (_ws?.readyState === WebSocket.OPEN) _ws.send(JSON.stringify(msg))
 }
 
-// Relay snake_case → Dexie camelCase
 function _normalise(p) {
   return {
     id:        p.id,
@@ -50,23 +50,27 @@ function _normalise(p) {
 }
 
 // Upload all local blobs the relay doesn't have yet.
-// Called once per relay connection (throttled to once per session).
+// Runs once per WS connect (2-second delay to let subscriptions settle).
 async function _syncLocalMedia() {
   let records
   try { records = await db.media.toArray() } catch { return }
   if (!records.length) return
 
+  let uploaded = 0
   for (const { cid, blob, mimeType } of records) {
     try {
       const head = await fetch(`${RELAY}/media/${cid}`, { method: 'HEAD' })
-      if (head.ok) continue            // relay already has it
+      if (head.ok) continue                          // relay already has it
       const fd = new FormData()
       fd.append('file', new File([blob], cid, { type: mimeType }))
-      await fetch(`${RELAY}/media`, { method: 'POST', body: fd })
+      const up = await fetch(`${RELAY}/media`, { method: 'POST', body: fd })
+      if (up.ok) uploaded++
     } catch {
-      // relay may be temporarily unreachable; skip silently
+      // relay unreachable; will retry on next connect
     }
   }
+
+  if (uploaded > 0) state.mediaSynced++   // triggers view reload in watchers
 }
 
 function _openWs() {
@@ -79,7 +83,6 @@ function _openWs() {
     state.error  = null
     clearTimeout(_reconnectTimer)
     for (const b of _boards) _send({ type: 'subscribe', board: b })
-    // Back-fill any local blobs the relay missed (fire-and-forget)
     clearTimeout(_mediaSyncTimer)
     _mediaSyncTimer = setTimeout(_syncLocalMedia, 2000)
   }
@@ -88,7 +91,6 @@ function _openWs() {
     let msg
     try { msg = JSON.parse(data) } catch { return }
     if (msg.type !== 'post') return
-
     const post = _normalise(msg.payload)
     await db.posts.put(post)
     state.lastPost = post
@@ -105,9 +107,14 @@ function _openWs() {
   }
 }
 
-// ── Standalone relay helpers (importable without the composable) ───────────────
+// ── Standalone relay helpers ──────────────────────────────────────────────────
 
-export const RELAY_MEDIA_URL = (cid) => `${RELAY}/media/${cid}`
+// mediaSynced version is baked into the relay URL so that after a back-fill
+// upload, Vue sees a changed src and forces the browser to re-fetch the image.
+export const RELAY_MEDIA_URL = (cid) =>
+  `${RELAY}/media/${cid}${state.mediaSynced ? `?v=${state.mediaSynced}` : ''}`
+
+export function getMediaSynced() { return state.mediaSynced }
 
 export async function relayPush(post) {
   const res = await fetch(`${RELAY}/posts`, {
@@ -115,7 +122,7 @@ export async function relayPush(post) {
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify(post),
   })
-  if (!res.ok && res.status !== 409) {   // 409 = already exists, ignore
+  if (!res.ok && res.status !== 409) {
     throw new Error(`relay POST /posts → ${res.status}`)
   }
 }
@@ -125,7 +132,7 @@ export async function relayUploadMedia(file) {
   fd.append('file', file)
   const res = await fetch(`${RELAY}/media`, { method: 'POST', body: fd })
   if (!res.ok) throw new Error(`relay POST /media → ${res.status}`)
-  return res.json()  // { cid, mimeType, size }
+  return res.json()
 }
 
 // ── Composable ────────────────────────────────────────────────────────────────
@@ -144,8 +151,7 @@ export function useSync() {
     state.error   = null
     try {
       const since = parseInt(localStorage.getItem(`sync:${board}`) ?? '0', 10)
-      const url   = `${RELAY}/sync?since=${since}&board=${encodeURIComponent(board)}`
-      const res   = await fetch(url)
+      const res   = await fetch(`${RELAY}/sync?since=${since}&board=${encodeURIComponent(board)}`)
       if (!res.ok) throw new Error(`relay GET /sync → ${res.status}`)
 
       const raw = await res.json()

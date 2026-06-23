@@ -42,7 +42,7 @@ const shortId = threadId.slice(0, 8)
 const postsStore = usePostsStore()
 const { currentThread } = storeToRefs(postsStore)
 const postFormRef = ref(null)
-const { lastPost, subscribe, pull } = useSync()
+const { lastPost, mediaSynced, subscribe, pull } = useSync()
 
 const backLinksMap = computed(() => {
   const map = {}
@@ -62,10 +62,8 @@ async function load() {
   await postsStore.loadThread(board, threadId)
 }
 
-// Reload thread when a reply or a new OP matching this thread arrives via WS
-watch(lastPost, post => {
-  if (post?.threadId === threadId || post?.id === threadId) load()
-})
+watch(lastPost, post => { if (post?.threadId === threadId || post?.id === threadId) load() })
+watch(mediaSynced, () => load())
 
 onMounted(async () => {
   await load()

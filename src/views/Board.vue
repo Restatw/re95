@@ -56,7 +56,7 @@ const route = useRoute()
 const board = route.params.board
 const postsStore = usePostsStore()
 const { threads } = storeToRefs(postsStore)
-const { lastPost, subscribe, pull } = useSync()
+const { lastPost, mediaSynced, subscribe, pull } = useSync()
 
 const PAGE_SIZE = 10
 
@@ -91,10 +91,8 @@ async function load() {
   await postsStore.loadBoard(board)
 }
 
-// Reload board when a new post arrives via WebSocket for this board
-watch(lastPost, post => {
-  if (post?.board === board) load()
-})
+watch(lastPost, post => { if (post?.board === board) load() })
+watch(mediaSynced, () => load())
 
 onMounted(async () => {
   await load()

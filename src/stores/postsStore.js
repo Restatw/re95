@@ -5,25 +5,25 @@ import { sha256hex, randomHex } from '../utils/hex'
 import { useIdentityStore } from './identityStore'
 import { relayPush, relayUploadMedia, RELAY_MEDIA_URL } from '../composables/useSync'
 
-// Track object URLs created this session to avoid leaks on re-load
-const _urlCache = new Map()
+// Cache only blob: URLs (expensive to create). Relay URLs are cheap strings —
+// they are NOT cached so that the version suffix from RELAY_MEDIA_URL() stays
+// current after a back-fill upload (state.mediaSynced bump).
+const _blobUrlCache = new Map()
 
 async function resolveMedia(post) {
   if (!post.mediaCid) return null
-  if (_urlCache.has(post.mediaCid)) return _urlCache.get(post.mediaCid)
+  if (_blobUrlCache.has(post.mediaCid)) return _blobUrlCache.get(post.mediaCid)
 
-  // Local blob first (own posts, or posts synced with blob download)
   const media = await db.media.get(post.mediaCid)
   if (media) {
     const url = URL.createObjectURL(media.blob)
-    _urlCache.set(post.mediaCid, url)
+    _blobUrlCache.set(post.mediaCid, url)
     return url
   }
 
-  // Fall back to relay URL for posts synced from the relay without local blob
-  const url = RELAY_MEDIA_URL(post.mediaCid)
-  _urlCache.set(post.mediaCid, url)
-  return url
+  // No local blob — return relay URL with current version suffix.
+  // Not cached: version changes after back-fill, letting Vue update <img src>.
+  return RELAY_MEDIA_URL(post.mediaCid)
 }
 
 async function hydrate(post) {

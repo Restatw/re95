@@ -69,7 +69,7 @@ const route = useRoute()
 const board = route.params.board
 const postsStore = usePostsStore()
 const { threads } = storeToRefs(postsStore)
-const { lastPost, subscribe, pull } = useSync()
+const { lastPost, mediaSynced, subscribe, pull } = useSync()
 
 const query       = ref('')
 const searching   = ref(false)
@@ -101,9 +101,8 @@ async function onPosted() {
   await postsStore.loadBoard(board)
 }
 
-watch(lastPost, post => {
-  if (post?.board === board) postsStore.loadBoard(board)
-})
+watch(lastPost, post => { if (post?.board === board) postsStore.loadBoard(board) })
+watch(mediaSynced, () => postsStore.loadBoard(board))
 
 onMounted(async () => {
   await postsStore.loadBoard(board)
