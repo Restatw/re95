@@ -14,6 +14,7 @@ const state = reactive({
 
 let _ws             = null
 let _reconnectTimer = null
+let _mediaSyncTimer = null
 const _boards       = new Set()   // boards we're subscribed to this session
 
 function _wsUrl() {
@@ -48,6 +49,26 @@ function _normalise(p) {
   }
 }
 
+// Upload all local blobs the relay doesn't have yet.
+// Called once per relay connection (throttled to once per session).
+async function _syncLocalMedia() {
+  let records
+  try { records = await db.media.toArray() } catch { return }
+  if (!records.length) return
+
+  for (const { cid, blob, mimeType } of records) {
+    try {
+      const head = await fetch(`${RELAY}/media/${cid}`, { method: 'HEAD' })
+      if (head.ok) continue            // relay already has it
+      const fd = new FormData()
+      fd.append('file', new File([blob], cid, { type: mimeType }))
+      await fetch(`${RELAY}/media`, { method: 'POST', body: fd })
+    } catch {
+      // relay may be temporarily unreachable; skip silently
+    }
+  }
+}
+
 function _openWs() {
   if (_ws && _ws.readyState <= WebSocket.OPEN) return
 
@@ -58,6 +79,9 @@ function _openWs() {
     state.error  = null
     clearTimeout(_reconnectTimer)
     for (const b of _boards) _send({ type: 'subscribe', board: b })
+    // Back-fill any local blobs the relay missed (fire-and-forget)
+    clearTimeout(_mediaSyncTimer)
+    _mediaSyncTimer = setTimeout(_syncLocalMedia, 2000)
   }
 
   _ws.onmessage = async ({ data }) => {
