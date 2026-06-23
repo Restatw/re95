@@ -92,8 +92,23 @@ export const usePostsStore = defineStore('posts', () => {
     // Fire-and-forget relay push — failure doesn't block the local write
     ;(async () => {
       try {
-        if (file) await relayUploadMedia(file)
-        await relayPush(post)
+        let relayCid = post.mediaCid
+        if (file) {
+          const result = await relayUploadMedia(file)
+          relayCid = result.cid
+          // When crypto.subtle is unavailable (HTTP non-localhost), the local CID
+          // is a random hex while the relay computes the real SHA-256. Fix the mismatch
+          // so cross-device clients can find the media by the authoritative CID.
+          if (relayCid !== post.mediaCid) {
+            await db.posts.where('id').equals(post.id).modify({ mediaCid: relayCid })
+            const oldMedia = await db.media.get(post.mediaCid)
+            if (oldMedia) {
+              await db.media.put({ ...oldMedia, cid: relayCid })
+              await db.media.delete(post.mediaCid)
+            }
+          }
+        }
+        await relayPush({ ...post, mediaCid: relayCid })
       } catch (e) {
         console.warn('[sync] relay push failed:', e.message)
       }
