@@ -15,9 +15,14 @@
     </nav>
 
     <main class="board-list">
+      <div class="view-toggle">
+        <span :class="['vt-btn', { active: viewMode === 'modern' }]" @click="setView('modern')" title="Modern">⊞</span>
+        <span :class="['vt-btn', { active: viewMode === 'classic' }]" @click="setView('classic')" title="Classic">≡</span>
+      </div>
       <Pagination v-model="page" :totalPages="totalPages" top />
 
-      <div class="board-grid">
+      <!-- modern grid -->
+      <div v-if="viewMode === 'modern'" class="board-grid">
         <router-link
           v-for="board in pagedBoards"
           :key="board.id"
@@ -37,6 +42,24 @@
           <span class="board-emoji">+</span>
           <span class="board-name">{{ t('board.newBoard') }}</span>
         </div>
+      </div>
+
+      <!-- classic list -->
+      <div v-else class="board-classic">
+        <div v-if="filteredBoards.length === 0" class="no-result">
+          {{ t('board.noResult', { query }) }}
+        </div>
+        <router-link
+          v-for="board in filteredBoards"
+          :key="board.id"
+          :to="`/${board.id}/`"
+          class="classic-item"
+        >
+          <span class="classic-emoji">{{ emoji(board) }}</span>
+          <span class="classic-id">/{{ board.id }}/</span>
+          <span class="classic-name">{{ board.name }}</span>
+        </router-link>
+        <span class="classic-new" @click="showCreate = true">+</span>
       </div>
 
       <Pagination v-model="page" :totalPages="totalPages" />
@@ -107,6 +130,12 @@ const newName    = ref('')
 const newEmoji   = ref('')
 const creating   = ref(false)
 const createError = ref('')
+const viewMode   = ref(localStorage.getItem('re95-view') || 'modern')
+
+function setView(mode) {
+  viewMode.value = mode
+  localStorage.setItem('re95-view', mode)
+}
 
 const filteredBoards = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -114,11 +143,17 @@ const filteredBoards = computed(() => {
   return boards.value.filter(b => b.id.includes(q) || b.name.includes(q))
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredBoards.value.length / PAGE_SIZE)))
+const totalPages = computed(() =>
+  viewMode.value === 'modern'
+    ? Math.max(1, Math.ceil(filteredBoards.value.length / PAGE_SIZE))
+    : 1
+)
+
 const pagedBoards = computed(() => {
   const start = (page.value - 1) * PAGE_SIZE
   return filteredBoards.value.slice(start, start + PAGE_SIZE)
 })
+
 
 function onSearchBlur() { setTimeout(() => { searching.value = false }, 150) }
 
@@ -156,8 +191,29 @@ async function createBoard() {
 <style scoped>
 .topbar-id { font-size: 0.78rem; color: #bbb; white-space: nowrap; letter-spacing: 0.03em; }
 
+.view-toggle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0 0.1rem;
+}
+.vt-btn {
+  cursor: pointer;
+  font-size: 1.05rem;
+  color: #ccc;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  line-height: 1;
+  border: 1px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.vt-btn:hover { color: #8b98e8; }
+.vt-btn.active { color: #8b98e8; border-color: #d0d5f5; }
+
 .board-list { padding: 0.25rem 0; }
 
+/* ── modern grid ── */
 .board-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
@@ -188,9 +244,40 @@ async function createBoard() {
 .board-new .board-emoji { font-size: 1.8rem; color: #8b98e8; font-weight: 300; }
 .board-new .board-name  { color: #8b98e8; }
 .board-new { border-style: dashed; cursor: pointer; }
-.no-result   { color: #999; font-size: 0.9rem; padding: 2rem; text-align: center; grid-column: 1 / -1; }
 
-/* modal */
+/* ── classic list ── */
+.board-classic { padding: 0.4rem 0; line-height: 2; }
+.classic-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.5rem 0.1rem 0.25rem;
+  text-decoration: none;
+  color: #555;
+  border-radius: 4px;
+  font-size: 0.84rem;
+  transition: background 0.12s;
+}
+.classic-item:hover { background: #eef2ff; }
+.classic-emoji { font-size: 0.95rem; line-height: 1; }
+.classic-id   { color: #8b98e8; font-size: 0.8rem; }
+.classic-name { color: #777; }
+.classic-new {
+  display: inline-flex;
+  align-items: center;
+  font-size: 1rem;
+  color: #c5cae9;
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  transition: background 0.12s, color 0.12s;
+  vertical-align: middle;
+}
+.classic-new:hover { background: #eef2ff; color: #8b98e8; }
+
+.no-result { color: #999; font-size: 0.9rem; padding: 2rem; text-align: center; grid-column: 1 / -1; }
+
+/* ── modal ── */
 .modal-backdrop {
   position: fixed;
   inset: 0;

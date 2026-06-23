@@ -49,8 +49,9 @@ import { usePostsStore } from '../stores/postsStore'
 const { t } = useI18n()
 
 const props = defineProps({
-  board:    { type: String, required: true },
-  threadId: { type: String, default: null },
+  board:       { type: String, required: true },
+  threadId:    { type: String, default: null },
+  defaultOpen: { type: Boolean, default: false },
 })
 const emit = defineEmits(['posted'])
 
@@ -70,7 +71,10 @@ const fileInput      = ref(null)
 const identityStore = useIdentityStore()
 const postsStore    = usePostsStore()
 
-onMounted(identityStore.init)
+onMounted(() => {
+  identityStore.init()
+  if (props.defaultOpen && detailsEl.value) detailsEl.value.open = true
+})
 
 function onFile(e) {
   file.value = e.target.files[0] ?? null

@@ -15,17 +15,9 @@
         @blur="onSearchBlur"
       />
       <router-link :to="`/${board}/catalog`" class="topbar-link">{{ t('board.catalog') }}</router-link>
-      <span class="topbar-link" @click="toggleNewPost">
-        {{ showNewPost ? t('nav.cancel') : t('nav.new') }}
-      </span>
     </nav>
 
-    <PostForm
-      v-if="showNewPost"
-      ref="newPostFormRef"
-      :board="board"
-      @posted="onPosted"
-    />
+    <PostForm :board="board" default-open @posted="onPosted" />
 
     <Pagination v-model="page" :totalPages="totalPages" top :always="threads.length > 0" />
 
@@ -48,7 +40,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
@@ -66,11 +58,9 @@ const { threads } = storeToRefs(postsStore)
 
 const PAGE_SIZE = 10
 
-const query          = ref('')
-const page           = ref(1)
-const searching      = ref(false)
-const showNewPost    = ref(false)
-const newPostFormRef = ref(null)
+const query     = ref('')
+const page      = ref(1)
+const searching = ref(false)
 
 const filteredThreads = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -90,16 +80,7 @@ const pagedThreads = computed(() => {
 
 function onSearchBlur() { setTimeout(() => { searching.value = false }, 150) }
 
-async function toggleNewPost() {
-  showNewPost.value = !showNewPost.value
-  if (showNewPost.value) {
-    await nextTick()
-    newPostFormRef.value?.open()
-  }
-}
-
 async function onPosted() {
-  showNewPost.value = false
   page.value = 1
   await load()
 }
