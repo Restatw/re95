@@ -1,9 +1,9 @@
 <template>
   <div class="page">
-    <nav class="topbar">
+    <nav class="topbar" :class="{ searching }">
       <span class="breadcrumb">
         <router-link to="/">re95</router-link>
-        <span> / /{{ board }}/</span>
+        <span> / {{ board }}</span>
       </span>
       <input
         v-model="query"
@@ -11,7 +11,10 @@
         :placeholder="t('search.placeholder')"
         class="search-input"
         @input="page = 1"
+        @focus="searching = true"
+        @blur="onSearchBlur"
       />
+      <router-link :to="`/${board}/catalog`" class="topbar-link">{{ t('board.catalog') }}</router-link>
       <span class="topbar-link" @click="toggleNewPost">
         {{ showNewPost ? t('nav.cancel') : t('nav.new') }}
       </span>
@@ -23,6 +26,8 @@
       :board="board"
       @posted="onPosted"
     />
+
+    <Pagination v-model="page" :totalPages="totalPages" top :always="threads.length > 0" />
 
     <div class="thread-list">
       <ThreadCard
@@ -38,7 +43,7 @@
       <p v-if="threads.length === 0" class="empty">{{ t('board.noThreads') }}</p>
     </div>
 
-    <Pagination v-model="page" :totalPages="totalPages" />
+    <Pagination v-model="page" :totalPages="totalPages" :always="threads.length > 0" />
   </div>
 </template>
 
@@ -63,6 +68,7 @@ const PAGE_SIZE = 10
 
 const query          = ref('')
 const page           = ref(1)
+const searching      = ref(false)
 const showNewPost    = ref(false)
 const newPostFormRef = ref(null)
 
@@ -81,6 +87,8 @@ const pagedThreads = computed(() => {
   const start = (page.value - 1) * PAGE_SIZE
   return filteredThreads.value.slice(start, start + PAGE_SIZE)
 })
+
+function onSearchBlur() { setTimeout(() => { searching.value = false }, 150) }
 
 async function toggleNewPost() {
   showNewPost.value = !showNewPost.value

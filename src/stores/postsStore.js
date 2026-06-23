@@ -46,7 +46,7 @@ export const usePostsStore = defineStore('posts', () => {
     currentThread.value = await Promise.all(all.map(hydrate))
   }
 
-  async function submit({ board, threadId, name, content, file, attachIdentity }) {
+  async function submit({ board, threadId, name, title, content, tags, file, attachIdentity }) {
     const identityStore = useIdentityStore()
     const id = randomHex(16)
 
@@ -65,8 +65,10 @@ export const usePostsStore = defineStore('posts', () => {
       id,
       board,
       threadId: threadId ?? 'root',
-      name: name.trim() || 'Anonymous',
-      content: content.trim(),
+      name:     name.trim() || 'Anonymous',
+      title:    title?.trim() || null,
+      content:  content.trim(),
+      tags:     tags?.length ? tags : null,
       mediaCid,
       createdAt: Date.now(),
       displayId: attachIdentity ? identityStore.identity?.displayId : null,

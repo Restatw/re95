@@ -1,6 +1,6 @@
 <template>
   <div class="thread-card">
-    <Post :post="thread" @reply="goToThread" />
+    <Post :post="thread" :reply-href="threadUrl" @reply="goToThread" />
 
     <div v-if="thread.replyCount > 5" class="omitted">
       {{ $t('post.omitted', thread.replyCount - 5) }}
@@ -10,11 +10,12 @@
       v-for="reply in thread.previewReplies"
       :key="reply.id"
       :post="reply"
+      :reply-href="threadUrl"
       class="preview-reply"
       @reply="goToThread"
     />
 
-    <div class="reply-info">
+    <div v-if="thread.replyCount > 5" class="reply-info">
       <router-link :to="`/${board}/thread/${thread.id}`">
         {{ $t('post.viewAll', thread.replyCount) }}
       </router-link>
@@ -23,6 +24,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Post from './Post.vue'
 
@@ -32,9 +34,10 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const threadUrl = computed(() => `/${props.board}/thread/${props.thread.id}`)
 
 function goToThread() {
-  router.push(`/${props.board}/thread/${props.thread.id}`)
+  router.push(threadUrl.value)
 }
 </script>
 

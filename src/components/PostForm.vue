@@ -8,6 +8,11 @@
           <input v-model="name" type="text" placeholder="Anonymous" maxlength="50" />
         </div>
 
+        <div v-if="isNewThread" class="form-row">
+          <label>{{ t('post.title') }}</label>
+          <input v-model="title" type="text" maxlength="100" />
+        </div>
+
         <div class="form-row">
           <label>{{ t('post.content') }}</label>
           <textarea ref="textareaEl" v-model="content" rows="4" required maxlength="2000" />
@@ -16,6 +21,11 @@
         <div class="form-row">
           <label>{{ t('post.image') }}</label>
           <input type="file" accept="image/*" @change="onFile" ref="fileInput" />
+        </div>
+
+        <div v-if="isNewThread" class="form-row">
+          <label>{{ t('post.tags') }}</label>
+          <input v-model="tagsInput" type="text" :placeholder="t('post.tagsHint')" maxlength="100" />
         </div>
 
         <div v-if="error" class="form-error">{{ error }}</div>
@@ -47,7 +57,9 @@ const emit = defineEmits(['posted'])
 const isNewThread = computed(() => !props.threadId)
 
 const name       = ref('')
+const title      = ref('')
 const content    = ref('')
+const tagsInput  = ref('')
 const file       = ref(null)
 const submitting = ref(false)
 const error          = ref('')
@@ -69,16 +81,21 @@ async function submit() {
   error.value = ''
   submitting.value = true
   try {
+    const tags = tagsInput.value.split(',').map(t => t.trim()).filter(Boolean)
     const post = await postsStore.submit({
       board:          props.board,
       threadId:       props.threadId,
       name:           name.value,
+      title:          title.value,
       content:        content.value,
+      tags,
       file:           file.value,
       attachIdentity: true,
     })
     name.value = ''
+    title.value = ''
     content.value = ''
+    tagsInput.value = ''
     file.value = null
     if (fileInput.value) fileInput.value.value = ''
     emit('posted', post)

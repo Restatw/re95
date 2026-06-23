@@ -1,50 +1,81 @@
 <template>
   <div class="page">
-    <nav class="topbar">
+    <nav class="topbar" :class="{ searching }">
       <span class="topbar-title">re95</span>
-      <input v-model="query" type="search" :placeholder="t('search.placeholder')" class="search-input" @input="page = 1" />
-      <span class="topbar-link" @click="showCreate = !showCreate">
-        {{ showCreate ? t('nav.cancel') : t('nav.new') }}
-      </span>
+      <input
+        v-model="query"
+        type="search"
+        :placeholder="t('search.placeholder')"
+        class="search-input"
+        @input="page = 1"
+        @focus="searching = true"
+        @blur="onSearchBlur"
+      />
+      <span class="topbar-id">{{ identity?.displayId ?? '...' }}</span>
     </nav>
 
-    <form v-if="showCreate" class="create-form" @submit.prevent="createBoard">
-      <input v-model="newId"   type="text" :placeholder="t('board.idPlaceholder')"   maxlength="20" required autofocus />
-      <input v-model="newName" type="text" :placeholder="t('board.namePlaceholder')" maxlength="20" required />
-      <span class="create-submit" @click="createBoard">{{ creating ? t('board.creating') : t('board.create') }}</span>
-      <span v-if="createError" class="create-error">{{ createError }}</span>
-    </form>
-
     <main class="board-list">
+      <Pagination v-model="page" :totalPages="totalPages" top />
 
-      <ul>
-        <li v-for="board in pagedBoards" :key="board.id">
-          <router-link :to="`/${board.id}/`">
-            <span class="board-id">/{{ board.id }}/</span>
-            <span class="board-name">{{ board.name }}</span>
-          </router-link>
-        </li>
-        <li v-if="filteredBoards.length === 0" class="no-result">
+      <div class="board-grid">
+        <router-link
+          v-for="board in pagedBoards"
+          :key="board.id"
+          :to="`/${board.id}/`"
+          class="board-card"
+        >
+          <span class="board-emoji">{{ emoji(board) }}</span>
+          <span class="board-name">{{ board.name }}</span>
+          <span class="board-id">/{{ board.id }}/</span>
+        </router-link>
+
+        <div v-if="filteredBoards.length === 0" class="no-result">
           {{ t('board.noResult', { query }) }}
-        </li>
-      </ul>
+        </div>
+
+        <div class="board-card board-new" @click="showCreate = true">
+          <span class="board-emoji">+</span>
+          <span class="board-name">{{ t('board.newBoard') }}</span>
+        </div>
+      </div>
 
       <Pagination v-model="page" :totalPages="totalPages" />
     </main>
 
-    <footer class="site-footer">
-      <span>{{ t('board.footer', { id: identity?.displayId ?? '...' }) }}</span>
-    </footer>
+    <!-- modal -->
+    <Teleport to="body">
+      <div v-if="showCreate" class="modal-backdrop" @click.self="closeModal">
+        <div class="modal">
+          <div class="modal-header">
+            <span>{{ t('nav.new') }}</span>
+            <span class="modal-close" @click="closeModal">✕</span>
+          </div>
+          <form @submit.prevent="createBoard" class="modal-form">
+            <EmojiPicker v-model="newEmoji" />
+            <input v-model="newId" type="text" :placeholder="t('board.idPlaceholder')" maxlength="20" required autofocus />
+            <input v-model="newName" type="text" :placeholder="t('board.namePlaceholder')" maxlength="20" required />
+            <div v-if="createError" class="modal-error">{{ createError }}</div>
+            <div class="modal-actions">
+              <span class="modal-cancel" @click="closeModal">{{ t('nav.cancel') }}</span>
+              <button type="submit" :disabled="creating">
+                {{ creating ? t('board.creating') : t('board.create') }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useIdentityStore } from '../stores/identityStore'
 import { useBoardsStore } from '../stores/boardsStore'
 import Pagination from '../components/Pagination.vue'
+import EmojiPicker from '../components/EmojiPicker.vue'
 
 const { t } = useI18n()
 
@@ -54,14 +85,27 @@ const { identity } = storeToRefs(identityStore)
 const boardsStore = useBoardsStore()
 const { boards } = storeToRefs(boardsStore)
 
-const PAGE_SIZE = 8
+const PAGE_SIZE = 40
 
-const query       = ref('')
-const page        = ref(1)
-const showCreate  = ref(false)
-const newId       = ref('')
-const newName     = ref('')
-const creating    = ref(false)
+const EMOJI = {
+  b:'🎲', img:'🖼️', tech:'⚙️', prog:'💻', ani:'🎌', comic:'📚',
+  moe:'💕', gam:'🎮', vn:'📖', mu:'🎵', tv:'🎬', sp:'⚽',
+  news:'📰', pol:'🏛️', fin:'💰', crypto:'🪙', sci:'🔬', space:'🚀',
+  his:'🏺', lang:'💬', edu:'🎓', law:'⚖️', art:'🎨', design:'✏️',
+  photo:'📷', food:'🍜', fit:'💪', med:'🏥', travel:'✈️', pet:'🐾',
+  car:'🚗', fashion:'👗', diy:'🔨', arch:'🏗️', env:'🌱', lit:'📝', cos:'🎭',
+}
+
+const emoji = board => board.emoji || EMOJI[board.id] || '📌'
+
+const query      = ref('')
+const page       = ref(1)
+const searching  = ref(false)
+const showCreate = ref(false)
+const newId      = ref('')
+const newName    = ref('')
+const newEmoji   = ref('')
+const creating   = ref(false)
 const createError = ref('')
 
 const filteredBoards = computed(() => {
@@ -71,20 +115,35 @@ const filteredBoards = computed(() => {
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredBoards.value.length / PAGE_SIZE)))
-
 const pagedBoards = computed(() => {
   const start = (page.value - 1) * PAGE_SIZE
   return filteredBoards.value.slice(start, start + PAGE_SIZE)
 })
+
+function onSearchBlur() { setTimeout(() => { searching.value = false }, 150) }
+
+function closeModal() {
+  showCreate.value = false
+  createError.value = ''
+}
+
+function onKey(e) { if (e.key === 'Escape') closeModal() }
+onMounted(async () => {
+  await identityStore.init()
+  await boardsStore.load()
+  window.addEventListener('keydown', onKey)
+})
+onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 async function createBoard() {
   if (creating.value) return
   createError.value = ''
   creating.value = true
   try {
-    await boardsStore.create({ id: newId.value, name: newName.value })
+    await boardsStore.create({ id: newId.value, name: newName.value, emoji: newEmoji.value })
     newId.value = ''
     newName.value = ''
+    newEmoji.value = ''
     showCreate.value = false
   } catch (e) {
     createError.value = e.message
@@ -92,27 +151,125 @@ async function createBoard() {
     creating.value = false
   }
 }
-
-onMounted(async () => {
-  await identityStore.init()
-  await boardsStore.load()
-})
 </script>
 
 <style scoped>
-.create-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.6rem 0; font-size: 0.85rem; }
-.create-form input { border: 1px solid #b7bfd9; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-family: inherit; border-radius: 2px; flex: 1; min-width: 130px; outline: none; }
-.create-form input:focus { border-color: #8b98e8; }
-.create-submit { color: #8b98e8; cursor: pointer; }
-.create-submit:hover { text-decoration: underline; }
-.create-error { color: #c00; }
+.topbar-id { font-size: 0.78rem; color: #bbb; white-space: nowrap; letter-spacing: 0.03em; }
 
-.board-list { padding: 0.5rem 0; }
-.board-list ul { list-style: none; padding: 0; }
-.board-list li { padding: 0.4rem 0; border-bottom: 1px solid #d8ddf5; }
-.board-list a { text-decoration: none; color: inherit; display: flex; gap: 1rem; }
-.board-list a:hover { background: #e4e8f9; }
-.board-id { font-weight: bold; color: #8b98e8; width: 60px; }
-.no-result { color: #999; font-size: 0.9rem; padding: 0.4rem 0; }
-.site-footer { margin-top: 2rem; font-size: 0.8rem; color: #888; text-align: center; }
+.board-list { padding: 0.25rem 0; }
+
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+}
+.board-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.85rem 0.5rem 0.7rem;
+  background: #fff;
+  border: 1px solid #dde1f5;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+.board-card:hover {
+  border-color: #8b98e8;
+  box-shadow: 0 2px 8px rgba(139,152,232,0.18);
+  transform: translateY(-2px);
+}
+.board-emoji { font-size: 1.6rem; line-height: 1; }
+.board-name  { font-size: 0.82rem; color: #333; font-weight: 500; text-align: center; }
+.board-id    { font-size: 0.72rem; color: #8b98e8; }
+.board-new .board-emoji { font-size: 1.8rem; color: #8b98e8; font-weight: 300; }
+.board-new .board-name  { color: #8b98e8; }
+.board-new { border-style: dashed; cursor: pointer; }
+.no-result   { color: #999; font-size: 0.9rem; padding: 2rem; text-align: center; grid-column: 1 / -1; }
+
+/* modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 1rem;
+}
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 1.1rem 0.6rem;
+  font-size: 0.88rem;
+  font-weight: bold;
+  color: #444;
+  border-bottom: 1px solid #eef2ff;
+  border-radius: 10px 10px 0 0;
+}
+.modal-close { cursor: pointer; color: #bbb; font-size: 0.9rem; }
+.modal-close:hover { color: #888; }
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1.1rem 1.1rem;
+}
+.modal-form :deep(.emoji-picker-wrap) { width: 100%; }
+.modal-form :deep(.emoji-trigger) {
+  width: 100%;
+  border-bottom: 1px solid #d8ddf5;
+  padding: 0.5rem 0.2rem;
+  font-size: 1.4rem;
+}
+.modal-form :deep(.emoji-trigger:hover),
+.modal-form :deep(.emoji-trigger:focus) { border-bottom-color: #8b98e8; }
+.modal-form :deep(.emoji-dropdown) { width: 100%; }
+.modal-form input {
+  border: none;
+  border-bottom: 1px solid #d8ddf5;
+  background: transparent;
+  padding: 0.35rem 0.2rem;
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+  color: #333;
+  width: 100%;
+}
+.modal-form input::placeholder { color: #bbb; }
+.modal-form input:focus { border-bottom-color: #8b98e8; }
+.modal-error { color: #c00; font-size: 0.78rem; }
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+.modal-cancel { font-size: 0.85rem; color: #aaa; cursor: pointer; }
+.modal-cancel:hover { color: #888; }
+.modal-actions button {
+  background: #8b98e8;
+  color: #fff;
+  border: none;
+  padding: 0.4rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.modal-actions button:hover { background: #6b78c8; }
+.modal-actions button:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
