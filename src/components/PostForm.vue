@@ -45,7 +45,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useIdentityStore } from '../stores/identityStore'
 import { usePostsStore } from '../stores/postsStore'
@@ -77,7 +77,8 @@ const textareaEl = ref(null)
 const fileInput  = ref(null)
 const turnstileEl = ref(null)
 
-let widgetId = null
+let widgetId  = null
+let _alive    = false
 
 const identityStore = useIdentityStore()
 const postsStore    = usePostsStore()
@@ -92,9 +93,17 @@ function _loadTurnstileScript() {
   document.head.appendChild(s)
 }
 
+function _removeTurnstile() {
+  if (widgetId !== null) {
+    try { window.turnstile?.remove(widgetId) } catch {}
+    widgetId = null
+    cfToken.value = ''
+  }
+}
+
 function _renderTurnstile() {
-  if (!SITE_KEY || !turnstileEl.value || widgetId !== null) return
-  if (!window.turnstile) return
+  if (!SITE_KEY || !turnstileEl.value || !window.turnstile) return
+  _removeTurnstile()
   widgetId = window.turnstile.render(turnstileEl.value, {
     sitekey: SITE_KEY,
     callback:           token => { cfToken.value = token },
@@ -104,6 +113,7 @@ function _renderTurnstile() {
 }
 
 function _tryRender() {
+  if (!_alive) return
   if (window.turnstile) _renderTurnstile()
   else setTimeout(_tryRender, 100)
 }
@@ -113,12 +123,18 @@ function onToggle() {
 }
 
 onMounted(() => {
+  _alive = true
   identityStore.init()
   if (props.defaultOpen && detailsEl.value) detailsEl.value.open = true
   if (SITE_KEY) {
     _loadTurnstileScript()
     if (props.defaultOpen) _tryRender()
   }
+})
+
+onUnmounted(() => {
+  _alive = false
+  _removeTurnstile()
 })
 
 function onFile(e) {
@@ -148,10 +164,7 @@ async function submit() {
     tagsInput.value = ''
     file.value = null
     if (fileInput.value) fileInput.value.value = ''
-    if (SITE_KEY && widgetId !== null) {
-      window.turnstile?.reset(widgetId)
-      cfToken.value = ''
-    }
+    if (SITE_KEY) _tryRender()
     emit('posted', post)
   } catch (e) {
     console.error('[PostForm] submit error:', e)

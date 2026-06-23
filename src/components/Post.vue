@@ -66,6 +66,7 @@ const parsedContent = computed(() => {
     .replace(/>/g, '&gt;')
     .replace(/&gt;&gt;([0-9a-f]{8})/g, '<a class="quote-link" href="#p-$1" data-id="$1">&gt;&gt;$1</a>')
     .replace(/^(&gt;(?!&gt;).+)$/gm, '<span class="greentext">$1</span>')
+    .replace(/(https?:\/\/[^\s<"]+)/g, '<a class="url-link" href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
     .replace(/\n/g, '<br>')
 })
 
@@ -100,6 +101,8 @@ function handleContentClick(e) {
 :deep(.greentext) { color: #789922; }
 :deep(.quote-link) { color: #8b98e8; cursor: pointer; text-decoration: none; }
 :deep(.quote-link:hover) { text-decoration: underline; }
+:deep(.url-link) { color: #4a6fa5; word-break: break-all; }
+:deep(.url-link:hover) { text-decoration: underline; }
 .post-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
 .tag { font-size: 0.72rem; background: #d6daf0; color: #5b68c8; padding: 0.1rem 0.45rem; border-radius: 999px; }
 .back-links { font-size: 0.75rem; color: #888; margin-top: 0.35rem; display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
