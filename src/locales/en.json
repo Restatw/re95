@@ -9,8 +9,11 @@
   "board": {
     "idPlaceholder": "Board ID (e.g. music)",
     "namePlaceholder": "Board name (e.g. Music)",
+    "emojiPlaceholder": "Icon (emoji)",
     "creating": "Creating...",
     "create": "Create",
+    "newBoard": "New Board",
+    "catalog": "Catalog",
     "noResult": "No boards matching \"{query}\"",
     "noThreads": "No threads yet",
     "footer": "ID: {id}"
@@ -24,8 +27,11 @@
     "newThread": "New Thread",
     "reply": "Reply",
     "name": "Name",
+    "title": "Title",
     "content": "Content",
     "image": "Image",
+    "tags": "Tags",
+    "tagsHint": "comma separated",
     "submitting": "Submitting...",
     "submit": "Submit",
     "omitted": "{count} reply omitted | {count} replies omitted",

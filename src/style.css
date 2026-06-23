@@ -6,6 +6,11 @@ body {
   font-family: Arial, sans-serif;
   font-size: 14px;
   color: #333;
+  touch-action: manipulation;
+}
+
+input, textarea, select {
+  font-size: 16px;
 }
 
 #app { max-width: 100%; }
@@ -16,32 +21,55 @@ a:visited { color: #6b78c8; }
 h1, h2, h3 { margin: 0 0 0.5rem; }
 
 /* ── shared page layout ── */
-.page { max-width: 900px; margin: 0 auto; padding: 1rem; }
+.page { max-width: 900px; margin: 0 auto; padding: 1rem 2rem; }
+
+@media (max-width: 480px) {
+  .page { padding: 0.75rem 1.5rem; }
+  .topbar { gap: 0.5rem; }
+}
 
 .topbar {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   font-size: 0.82rem;
-  margin-bottom: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #d8ddf5;
+  margin-bottom: 0.6rem;
   color: #888;
 }
 .topbar a { color: #8b98e8; text-decoration: none; }
 .topbar a:hover { color: #6b78c8; }
-.topbar-title { font-weight: bold; color: #555; white-space: nowrap; }
-.topbar-link { cursor: pointer; color: #888; white-space: nowrap; }
-.topbar-link:hover { color: #555; }
+.topbar-title { font-weight: bold; color: #444; white-space: nowrap; letter-spacing: 0.02em; transition: opacity 0.2s, max-width 0.2s; }
+.topbar-link { cursor: pointer; color: #8b98e8; white-space: nowrap; transition: opacity 0.2s, max-width 0.2s; }
+.topbar-link:hover { color: #6b78c8; }
+.topbar.searching .topbar-title,
+.topbar.searching .topbar-link,
+.topbar.searching .topbar-id,
+.topbar.searching .breadcrumb { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; }
 
 .search-input {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 0.3rem 0.4rem;
-  font-size: 0.85rem;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.82rem;
   font-family: inherit;
   outline: none;
-  color: inherit;
+  color: #888;
 }
-.search-input:focus { border-bottom: 1px solid #8b98e8; }
+.search-input::placeholder { color: #bbb; }
+.search-input:focus { color: #444; }
 
 .empty { color: #999; text-align: center; padding: 2rem; }
+
+/* ── custom scrollbar ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #b7bfd9 transparent;
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #b7bfd9; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #8b98e8; }
+::-webkit-scrollbar-corner { background: transparent; }

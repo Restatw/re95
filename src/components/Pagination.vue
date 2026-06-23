@@ -1,5 +1,5 @@
 <template>
-  <div v-if="totalPages > 1" class="pagination">
+  <div v-if="totalPages > 1 || always" :class="['pagination', { top }]">
     <span :class="['pg', { disabled: modelValue <= 1 }]" @click="go(modelValue - 1)">«</span>
     <span
       v-for="p in pages"
@@ -17,6 +17,8 @@ import { computed } from 'vue'
 const props = defineProps({
   modelValue: { type: Number, required: true },
   totalPages: { type: Number, required: true },
+  top:        { type: Boolean, default: false },
+  always:     { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -40,7 +42,8 @@ const pages = computed(() => {
 </script>
 
 <style scoped>
-.pagination { display: flex; gap: 0.4rem; font-size: 0.82rem; margin-top: 1rem; flex-wrap: wrap; }
+.pagination { display: flex; justify-content: center; gap: 0.4rem; font-size: 0.82rem; margin-top: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+.pagination.top { margin-top: 0; margin-bottom: 0.75rem; }
 .pg { cursor: pointer; color: #888; padding: 0.1rem 0.3rem; }
 .pg:hover:not(.disabled):not(.ellipsis):not(.current) { color: #333; }
 .pg.current { color: #333; font-weight: bold; }

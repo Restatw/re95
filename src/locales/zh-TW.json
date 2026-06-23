@@ -9,8 +9,11 @@
   "board": {
     "idPlaceholder": "版面 ID（如 music）",
     "namePlaceholder": "版面名稱（如 音樂）",
+    "emojiPlaceholder": "圖示（emoji）",
     "creating": "建立中...",
     "create": "建立",
+    "newBoard": "新建",
+    "catalog": "圖覽",
     "noResult": "無符合「{query}」的版面",
     "noThreads": "尚無帖子",
     "footer": "ID: {id}"
@@ -24,8 +27,11 @@
     "newThread": "發新帖",
     "reply": "回文",
     "name": "名稱",
+    "title": "標題",
     "content": "內容",
     "image": "圖片",
+    "tags": "標籤",
+    "tagsHint": "逗號分隔",
     "submitting": "送出中...",
     "submit": "送出",
     "omitted": "省略了 {count} 篇回覆",

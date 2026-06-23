@@ -3,7 +3,7 @@
     <nav class="topbar">
       <router-link to="/">re95</router-link>
       <span> / </span>
-      <router-link :to="`/${board}/`">/{{ board }}/</router-link>
+      <router-link :to="`/${board}/`">{{ board }}</router-link>
       <span> / {{ t('thread.breadcrumb', { id: shortId }) }}</span>
     </nav>
 
@@ -14,6 +14,7 @@
         v-for="post in currentThread"
         :key="post.id"
         :post="post"
+        :back-links="backLinksMap[post.id.slice(0, 8)] ?? []"
         @reply="handleReply"
       />
       <p v-if="currentThread.length === 0" class="empty">{{ t('thread.notFound') }}</p>
@@ -22,11 +23,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { usePostsStore } from '../stores/postsStore'
+import { useSync } from '../composables/useSync'
 import Post from '../components/Post.vue'
 import PostForm from '../components/PostForm.vue'
 
@@ -40,6 +42,17 @@ const shortId = threadId.slice(0, 8)
 const postsStore = usePostsStore()
 const { currentThread } = storeToRefs(postsStore)
 const postFormRef = ref(null)
+const { lastPost, mediaSynced, subscribe, pull } = useSync()
+
+const backLinksMap = computed(() => {
+  const map = {}
+  for (const post of currentThread.value) {
+    for (const [, id] of post.content.matchAll(/>>([0-9a-f]{8})/g)) {
+      ;(map[id] ??= []).push(post.id.slice(0, 8))
+    }
+  }
+  return map
+})
 
 function handleReply(quotedShortId) {
   postFormRef.value?.insertQuote(quotedShortId)
@@ -49,8 +62,14 @@ async function load() {
   await postsStore.loadThread(board, threadId)
 }
 
+watch(lastPost, post => { if (post?.threadId === threadId || post?.id === threadId) load() })
+watch(mediaSynced, () => load())
+
 onMounted(async () => {
   await load()
+  subscribe(board)
+  const n = await pull(board)
+  if (n) load()
   postFormRef.value?.open()
 })
 </script>
