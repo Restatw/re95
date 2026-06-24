@@ -1,5 +1,9 @@
 *, *::before, *::after { box-sizing: border-box; }
 
+html, body {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   background: #eef2ff;

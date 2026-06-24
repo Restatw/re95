@@ -191,9 +191,10 @@ defineExpose({ insertQuote, open })
 .post-form { background: #d6daf0; border: 1px solid #b7bfd9; padding: 0.5rem 1rem; margin-bottom: 1rem; border-radius: 2px; }
 summary { cursor: pointer; font-weight: bold; font-size: 0.9rem; }
 form { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.form-row { display: flex; gap: 0.5rem; align-items: flex-start; }
+.form-row { display: flex; gap: 0.5rem; align-items: flex-start; min-width: 0; }
 .form-row label { width: 60px; font-size: 0.85rem; padding-top: 0.2rem; flex-shrink: 0; }
-input[type="text"], textarea { flex: 1; border: 1px solid #aaa; padding: 0.3rem; font-size: 0.9rem; font-family: inherit; }
+input[type="text"], textarea { flex: 1; min-width: 0; border: 1px solid #aaa; padding: 0.3rem; font-size: 0.9rem; font-family: inherit; }
+input[type="file"] { flex: 1; min-width: 0; max-width: 100%; font-size: 0.85rem; }
 textarea { resize: vertical; }
 .form-error { color: #c00; font-size: 0.85rem; background: #fee; border: 1px solid #fcc; padding: 0.3rem 0.5rem; border-radius: 2px; }
 .form-actions { display: flex; justify-content: flex-end; }
