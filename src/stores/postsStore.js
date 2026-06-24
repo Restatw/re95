@@ -9,13 +9,20 @@ const RELAY = import.meta.env.VITE_RELAY_URL ?? '/api'
 
 const _blobUrlCache = new Map()
 
+// iOS Safari cannot store Blob/File in IndexedDB — we store ArrayBuffer instead.
+// Old records may still have a `blob` field; handle both formats.
+function _mediaToBlob(media) {
+  if (media.buf) return new Blob([media.buf], { type: media.mimeType })
+  return media.blob
+}
+
 async function resolveMedia(post) {
   if (!post.mediaCid) return null
   if (_blobUrlCache.has(post.mediaCid)) return _blobUrlCache.get(post.mediaCid)
 
   const media = await db.media.get(post.mediaCid)
   if (media) {
-    const url = URL.createObjectURL(media.blob)
+    const url = URL.createObjectURL(_mediaToBlob(media))
     _blobUrlCache.set(post.mediaCid, url)
     return url
   }
@@ -61,7 +68,7 @@ export const usePostsStore = defineStore('posts', () => {
       const buf = await file.arrayBuffer()
       mediaCid = await sha256hex(buf)
       if (!await db.media.get(mediaCid)) {
-        await db.media.put({ cid: mediaCid, blob: file, mimeType: file.type })
+        await db.media.put({ cid: mediaCid, buf, mimeType: file.type })
       }
     }
 
@@ -120,7 +127,7 @@ export const usePostsStore = defineStore('posts', () => {
       if (post.mediaCid) {
         const media = await db.media.get(post.mediaCid)
         if (media) {
-          const file = new File([media.blob], post.mediaCid, { type: media.mimeType })
+          const file = new File([_mediaToBlob(media)], post.mediaCid, { type: media.mimeType })
           const result = await relayUploadMedia(file)
           relayCid = result.cid
           if (relayCid !== post.mediaCid) {

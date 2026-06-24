@@ -58,7 +58,9 @@ async function _syncLocalMedia() {
   if (!records.length) return
 
   let uploaded = 0
-  for (const { cid, blob, mimeType } of records) {
+  for (const record of records) {
+    const { cid, mimeType } = record
+    const blob = record.buf ? new Blob([record.buf], { type: mimeType }) : record.blob
     try {
       const head = await fetch(`${RELAY}/media/${cid}`, { method: 'HEAD' })
       if (head.ok) continue                          // relay already has it
