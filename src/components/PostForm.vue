@@ -15,7 +15,7 @@
 
         <div class="form-row">
           <label>{{ t('post.content') }}</label>
-          <textarea ref="textareaEl" v-model="content" rows="4" required maxlength="2000" />
+          <textarea ref="textareaEl" v-model="content" rows="4" :required="!file" maxlength="2000" />
         </div>
 
         <div class="form-row">
@@ -142,7 +142,7 @@ function onFile(e) {
 }
 
 async function submit() {
-  if (!content.value.trim()) return
+  if (!content.value.trim() && !file.value) return
   error.value = ''
   submitting.value = true
   try {

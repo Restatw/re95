@@ -20,7 +20,7 @@
       </div>
     </Teleport>
 
-    <div class="post-content" v-html="parsedContent" @click.capture="handleContentClick" />
+    <div class="post-content" :class="{ 'no-content': !post.content?.trim() }" v-html="parsedContent" @click.capture="handleContentClick" />
 
     <div v-if="post.tags?.length" class="post-tags">
       <span v-for="tag in post.tags" :key="tag" class="tag">{{ tag }}</span>
@@ -60,6 +60,7 @@ const shortId   = computed(() => props.post.id.slice(0, 8))
 const formattedTime = computed(() => new Date(props.post.createdAt).toLocaleString('zh-TW'))
 
 const parsedContent = computed(() => {
+  if (!props.post.content?.trim()) return '<span class="no-content-text">No content</span>'
   return props.post.content
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -103,6 +104,7 @@ function handleContentClick(e) {
 :deep(.quote-link:hover) { text-decoration: underline; }
 :deep(.url-link) { color: #4a6fa5; word-break: break-all; }
 :deep(.url-link:hover) { text-decoration: underline; }
+:deep(.no-content-text) { color: #aaa; font-style: italic; }
 .post-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
 .tag { font-size: 0.72rem; background: #d6daf0; color: #5b68c8; padding: 0.1rem 0.45rem; border-radius: 999px; }
 .back-links { font-size: 0.75rem; color: #888; margin-top: 0.35rem; display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
