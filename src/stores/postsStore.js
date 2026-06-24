@@ -7,9 +7,6 @@ import { relayPush, relayUploadMedia, RELAY_MEDIA_URL } from '../composables/use
 
 const RELAY = import.meta.env.VITE_RELAY_URL ?? '/api'
 
-// Cache only blob: URLs (expensive to create). Relay URLs are cheap strings —
-// they are NOT cached so that the version suffix from RELAY_MEDIA_URL() stays
-// current after a back-fill upload (state.mediaSynced bump).
 const _blobUrlCache = new Map()
 
 async function resolveMedia(post) {
@@ -23,8 +20,6 @@ async function resolveMedia(post) {
     return url
   }
 
-  // No local blob — return relay URL with current version suffix.
-  // Not cached: version changes after back-fill, letting Vue update <img src>.
   return RELAY_MEDIA_URL(post.mediaCid)
 }
 
@@ -43,8 +38,8 @@ export const usePostsStore = defineStore('posts', () => {
       .sortBy('createdAt')
 
     threads.value = await Promise.all(ops.map(async op => {
-      const allReplies    = await db.posts.where({ board, threadId: op.id }).sortBy('createdAt')
-      const replyCount    = allReplies.length
+      const allReplies     = await db.posts.where({ board, threadId: op.id }).sortBy('createdAt')
+      const replyCount     = allReplies.length
       const previewReplies = await Promise.all(allReplies.slice(-5).map(hydrate))
       return { ...(await hydrate(op)), replyCount, previewReplies }
     }))
@@ -76,13 +71,14 @@ export const usePostsStore = defineStore('posts', () => {
       threadId:  threadId ?? 'root',
       name:      name.trim() || 'Anonymous',
       title:     title?.trim() || null,
-      content:   content.trim(),
+      content:   content?.trim() ?? '',
       tags:      tags?.length ? tags : null,
       mediaCid,
       createdAt: Date.now(),
       displayId: attachIdentity ? identityStore.identity?.displayId : null,
       pubkey:    attachIdentity ? identityStore.identity?.pubkey    : null,
       sig:       null,
+      synced:    false,
     }
 
     if (attachIdentity) {
@@ -91,16 +87,12 @@ export const usePostsStore = defineStore('posts', () => {
 
     await db.posts.put(post)
 
-    // Fire-and-forget relay push — failure doesn't block the local write
     ;(async () => {
       try {
         let relayCid = post.mediaCid
         if (file) {
           const result = await relayUploadMedia(file)
           relayCid = result.cid
-          // When crypto.subtle is unavailable (HTTP non-localhost), the local CID
-          // is a random hex while the relay computes the real SHA-256. Fix the mismatch
-          // so cross-device clients can find the media by the authoritative CID.
           if (relayCid !== post.mediaCid) {
             await db.posts.where('id').equals(post.id).modify({ mediaCid: relayCid })
             const oldMedia = await db.media.get(post.mediaCid)
@@ -111,6 +103,7 @@ export const usePostsStore = defineStore('posts', () => {
           }
         }
         await relayPush({ ...post, mediaCid: relayCid }, cfToken)
+        await db.posts.where('id').equals(post.id).modify({ synced: true })
       } catch (e) {
         console.warn('[sync] relay push failed:', e.message)
       }
@@ -119,11 +112,37 @@ export const usePostsStore = defineStore('posts', () => {
     return post
   }
 
+  async function retryPost(postId) {
+    const post = await db.posts.get(postId)
+    if (!post) return false
+    try {
+      let relayCid = post.mediaCid
+      if (post.mediaCid) {
+        const media = await db.media.get(post.mediaCid)
+        if (media) {
+          const file = new File([media.blob], post.mediaCid, { type: media.mimeType })
+          const result = await relayUploadMedia(file)
+          relayCid = result.cid
+          if (relayCid !== post.mediaCid) {
+            await db.posts.where('id').equals(postId).modify({ mediaCid: relayCid })
+          }
+        }
+      }
+      await relayPush({ ...post, mediaCid: relayCid })
+      await db.posts.where('id').equals(postId).modify({ synced: true })
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async function deletePost(postId) {
     const identityStore = useIdentityStore()
+    const post = await db.posts.get(postId)
     await db.posts.delete(postId)
 
-    // Sign and call relay
+    if (post?.synced === false) return  // not on relay, skip remote delete
+
     const sig = await identityStore.sign({ action: 'delete', id: postId })
     if (sig) {
       fetch(`${RELAY}/posts/${postId}`, {
@@ -134,5 +153,5 @@ export const usePostsStore = defineStore('posts', () => {
     }
   }
 
-  return { threads, currentThread, loadBoard, loadThread, submit, deletePost }
+  return { threads, currentThread, loadBoard, loadThread, submit, retryPost, deletePost }
 })

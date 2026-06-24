@@ -1,6 +1,6 @@
 <template>
   <div class="thread-card">
-    <Post :post="thread" :reply-href="threadUrl" @reply="goToThread" @deleted="$emit('posted')" />
+    <Post :post="thread" :reply-href="threadUrl" @reply="goToThread" @deleted="$emit('posted')" @retried="$emit('posted')" />
 
     <div v-if="thread.replyCount > 5" class="omitted">
       {{ $t('post.omitted', thread.replyCount - 5) }}
@@ -14,6 +14,7 @@
       class="preview-reply"
       @reply="goToThread"
       @deleted="$emit('posted')"
+      @retried="$emit('posted')"
     />
 
     <div v-if="thread.replyCount > 5" class="reply-info">

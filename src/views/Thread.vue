@@ -17,6 +17,7 @@
         :back-links="backLinksMap[post.id.slice(0, 8)] ?? []"
         @reply="handleReply"
         @deleted="load"
+        @retried="load"
       />
       <p v-if="currentThread.length === 0" class="empty">{{ t('thread.notFound') }}</p>
     </div>

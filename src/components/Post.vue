@@ -1,5 +1,5 @@
 <template>
-  <div class="post" :class="{ 'is-op': isOP }" :id="`p-${shortId}`">
+  <div class="post" :class="{ 'is-op': isOP, 'is-unsynced': post.synced === false }" :id="`p-${shortId}`">
     <div class="post-header">
       <span v-if="post.title" class="post-title">{{ post.title }}</span>
       <span class="author">{{ post.name || 'Anonymous' }}</span>
@@ -27,6 +27,12 @@
       <span v-for="tag in post.tags" :key="tag" class="tag">{{ tag }}</span>
     </div>
 
+    <div v-if="post.synced === false" class="sync-banner">
+      <span class="sync-warn">⚠ 未同步至伺服器</span>
+      <button class="sync-btn" :disabled="retrying" @click="handleRetry">{{ retrying ? '重試中…' : '重試' }}</button>
+      <button class="sync-btn del" @click="handleDelete">刪除</button>
+    </div>
+
     <div v-if="backLinks.length" class="back-links">
       Replies({{ backLinks.length }}):
       <a
@@ -50,9 +56,10 @@ const props = defineProps({
   backLinks: { type: Array, default: () => [] },
   replyHref: { type: String, default: null },
 })
-const emit = defineEmits(['reply', 'deleted'])
+const emit = defineEmits(['reply', 'deleted', 'retried'])
 
 const lightbox = ref(false)
+const retrying = ref(false)
 const identityStore = useIdentityStore()
 const postsStore    = usePostsStore()
 
@@ -61,8 +68,17 @@ const canDelete = computed(() =>
   identityStore.identity?.displayId === props.post.displayId
 )
 
+async function handleRetry() {
+  retrying.value = true
+  const ok = await postsStore.retryPost(props.post.id)
+  retrying.value = false
+  if (ok) emit('retried')
+}
+
 async function handleDelete() {
-  if (!confirm(`刪除 No.${shortId.value}？`)) return
+  if (props.post.synced !== false) {
+    if (!confirm(`刪除 No.${shortId.value}？`)) return
+  }
   await postsStore.deletePost(props.post.id)
   emit('deleted', props.post.id)
 }
@@ -123,6 +139,20 @@ function handleContentClick(e) {
 :deep(.url-link) { color: #4a6fa5; word-break: break-all; }
 :deep(.url-link:hover) { text-decoration: underline; }
 :deep(.no-content-text) { color: #aaa; font-style: italic; }
+
+.is-unsynced { border-style: dashed; border-color: #e8a87c; }
+.is-unsynced .post-header,
+.is-unsynced .post-media,
+.is-unsynced .post-content,
+.is-unsynced .post-tags { opacity: 0.5; }
+
+.sync-banner { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.4rem; font-size: 0.78rem; flex-wrap: wrap; }
+.sync-warn { color: #c67c2a; }
+.sync-btn { border: 1px solid #c67c2a; background: none; color: #c67c2a; font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 3px; cursor: pointer; }
+.sync-btn:hover:not(:disabled) { background: #c67c2a; color: #fff; }
+.sync-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.sync-btn.del { border-color: #c00; color: #c00; }
+.sync-btn.del:hover { background: #c00; color: #fff; }
 .post-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
 .tag { font-size: 0.72rem; background: #d6daf0; color: #5b68c8; padding: 0.1rem 0.45rem; border-radius: 999px; }
 .back-links { font-size: 0.75rem; color: #888; margin-top: 0.35rem; display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
