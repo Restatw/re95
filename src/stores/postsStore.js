@@ -17,9 +17,9 @@ function _mediaToBlob(media) {
 }
 
 async function resolveMedia(post) {
-  if (!post.mediaCid) return { url: null, mime: null }
+  if (!post.mediaCid) return { url: null, mime: post.mediaMime ?? null }
   const cached = _blobUrlCache.get(post.mediaCid)
-  if (cached) return cached
+  if (cached) return { ...cached, mime: cached.mime ?? post.mediaMime ?? null }
 
   const media = await db.media.get(post.mediaCid)
   if (media) {
@@ -29,12 +29,12 @@ async function resolveMedia(post) {
     return result
   }
 
-  return { url: RELAY_MEDIA_URL(post.mediaCid), mime: null }
+  return { url: RELAY_MEDIA_URL(post.mediaCid), mime: post.mediaMime ?? null }
 }
 
 async function hydrate(post) {
   const { url, mime } = await resolveMedia(post)
-  return { ...post, mediaUrl: url, mediaMime: mime }
+  return { ...post, mediaUrl: url, mediaMime: mime ?? post.mediaMime ?? null }
 }
 
 export const usePostsStore = defineStore('posts', () => {
@@ -84,6 +84,7 @@ export const usePostsStore = defineStore('posts', () => {
       content:   content?.trim() ?? '',
       tags:      tags?.length ? tags : null,
       mediaCid,
+      mediaMime: file?.type ?? null,
       createdAt: Date.now(),
       displayId: attachIdentity ? identityStore.identity?.displayId : null,
       pubkey:    attachIdentity ? identityStore.identity?.pubkey    : null,

@@ -43,6 +43,7 @@ function _normalise(p) {
     content:   p.content,
     tags:      p.tags       ?? null,
     mediaCid:  p.media_cid  ?? p.mediaCid  ?? null,
+    mediaMime: p.media_mime ?? p.mediaMime ?? null,
     createdAt: p.created_at ?? p.createdAt ?? Date.now(),
     displayId: p.display_id ?? p.displayId ?? null,
     sig:       p.sig        ?? null,
