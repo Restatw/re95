@@ -8,6 +8,7 @@
       <span class="post-no">No.{{ shortId }}</span>
       <a v-if="replyHref" :href="replyHref" class="reply-btn" @click.prevent="$emit('reply', shortId)">{{ $t('post.replyBtn') }}</a>
       <button v-else class="reply-btn" @click="$emit('reply', shortId)">{{ $t('post.replyBtn') }}</button>
+      <button v-if="canDelete" class="del-btn" @click="handleDelete">×</button>
     </div>
 
     <div v-if="post.mediaUrl" class="post-media">
@@ -41,15 +42,30 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useIdentityStore } from '../stores/identityStore'
+import { usePostsStore } from '../stores/postsStore'
 
 const props = defineProps({
   post:      { type: Object, required: true },
   backLinks: { type: Array, default: () => [] },
   replyHref: { type: String, default: null },
 })
-defineEmits(['reply'])
+const emit = defineEmits(['reply', 'deleted'])
 
 const lightbox = ref(false)
+const identityStore = useIdentityStore()
+const postsStore    = usePostsStore()
+
+const canDelete = computed(() =>
+  props.post.displayId &&
+  identityStore.identity?.displayId === props.post.displayId
+)
+
+async function handleDelete() {
+  if (!confirm(`刪除 No.${shortId.value}？`)) return
+  await postsStore.deletePost(props.post.id)
+  emit('deleted', props.post.id)
+}
 
 function onKey(e) { if (e.key === 'Escape') lightbox.value = false }
 onMounted(() => window.addEventListener('keydown', onKey))
@@ -95,6 +111,8 @@ function handleContentClick(e) {
 .post-no { color: #888; font-size: 0.75rem; }
 .reply-btn { background: none; border: none; color: #8b98e8; font-size: 0.75rem; cursor: pointer; padding: 0; text-decoration: underline; }
 .reply-btn:hover { color: #5b68c8; }
+.del-btn { background: none; border: none; color: #c00; font-size: 0.85rem; cursor: pointer; padding: 0 0.1rem; line-height: 1; opacity: 0.6; }
+.del-btn:hover { opacity: 1; }
 .post-media img { max-width: 200px; max-height: 200px; cursor: zoom-in; display: block; margin-bottom: 0.5rem; object-fit: contain; }
 .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; cursor: zoom-out; }
 .lightbox img { max-width: 92vw; max-height: 92vh; object-fit: contain; cursor: default; border-radius: 2px; }

@@ -10,6 +10,7 @@ const state = reactive({
   syncing:     false,
   error:       null,
   lastPost:    null,   // most recent post written (from WS push or delta pull)
+  lastDelete:  null,   // most recent delete { id, board } pushed from relay
   mediaSynced: 0,      // increments each time back-fill uploads ≥1 blob
 })
 
@@ -90,10 +91,14 @@ function _openWs() {
   _ws.onmessage = async ({ data }) => {
     let msg
     try { msg = JSON.parse(data) } catch { return }
-    if (msg.type !== 'post') return
-    const post = _normalise(msg.payload)
-    await db.posts.put(post)
-    state.lastPost = post
+    if (msg.type === 'post') {
+      const post = _normalise(msg.payload)
+      await db.posts.put(post)
+      state.lastPost = post
+    } else if (msg.type === 'delete') {
+      await db.posts.delete(msg.payload.id)
+      state.lastDelete = msg.payload
+    }
   }
 
   _ws.onclose = () => {

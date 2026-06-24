@@ -5,6 +5,8 @@ import { sha256hex, randomHex } from '../utils/hex'
 import { useIdentityStore } from './identityStore'
 import { relayPush, relayUploadMedia, RELAY_MEDIA_URL } from '../composables/useSync'
 
+const RELAY = import.meta.env.VITE_RELAY_URL ?? '/api'
+
 // Cache only blob: URLs (expensive to create). Relay URLs are cheap strings —
 // they are NOT cached so that the version suffix from RELAY_MEDIA_URL() stays
 // current after a back-fill upload (state.mediaSynced bump).
@@ -117,5 +119,20 @@ export const usePostsStore = defineStore('posts', () => {
     return post
   }
 
-  return { threads, currentThread, loadBoard, loadThread, submit }
+  async function deletePost(postId) {
+    const identityStore = useIdentityStore()
+    await db.posts.delete(postId)
+
+    // Sign and call relay
+    const sig = await identityStore.sign({ action: 'delete', id: postId })
+    if (sig) {
+      fetch(`${RELAY}/posts/${postId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sig }),
+      }).catch(() => {})
+    }
+  }
+
+  return { threads, currentThread, loadBoard, loadThread, submit, deletePost }
 })

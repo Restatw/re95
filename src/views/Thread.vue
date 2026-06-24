@@ -16,6 +16,7 @@
         :post="post"
         :back-links="backLinksMap[post.id.slice(0, 8)] ?? []"
         @reply="handleReply"
+        @deleted="load"
       />
       <p v-if="currentThread.length === 0" class="empty">{{ t('thread.notFound') }}</p>
     </div>
@@ -42,7 +43,7 @@ const shortId = threadId.slice(0, 8)
 const postsStore = usePostsStore()
 const { currentThread } = storeToRefs(postsStore)
 const postFormRef = ref(null)
-const { lastPost, mediaSynced, subscribe, pull } = useSync()
+const { lastPost, lastDelete, mediaSynced, subscribe, pull } = useSync()
 
 const backLinksMap = computed(() => {
   const map = {}
@@ -62,7 +63,8 @@ async function load() {
   await postsStore.loadThread(board, threadId)
 }
 
-watch(lastPost, post => { if (post?.threadId === threadId || post?.id === threadId) load() })
+watch(lastPost,   post => { if (post?.threadId === threadId || post?.id === threadId) load() })
+watch(lastDelete, ()   => load())
 watch(mediaSynced, () => load())
 
 onMounted(async () => {
