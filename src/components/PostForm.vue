@@ -20,7 +20,7 @@
 
         <div class="form-row">
           <label>{{ t('post.image') }}</label>
-          <input type="file" accept="image/*" @change="onFile" ref="fileInput" />
+          <input type="file" accept="image/*,video/webm,video/mp4" @change="onFile" ref="fileInput" />
         </div>
 
         <div v-if="isNewThread" class="form-row">

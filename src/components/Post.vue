@@ -12,12 +12,22 @@
     </div>
 
     <div v-if="post.mediaUrl" class="post-media">
-      <img :src="post.mediaUrl" @click="lightbox = true" />
+      <video
+        v-if="isVideo"
+        :src="post.mediaUrl"
+        controls
+        loop
+        muted
+        playsinline
+        @click="lightbox = true"
+      />
+      <img v-else :src="post.mediaUrl" @click="lightbox = true" />
     </div>
 
     <Teleport to="body">
       <div v-if="lightbox" class="lightbox" @click="lightbox = false">
-        <img :src="post.mediaUrl" @click.stop />
+        <video v-if="isVideo" :src="post.mediaUrl" controls loop autoplay playsinline @click.stop />
+        <img v-else :src="post.mediaUrl" @click.stop />
       </div>
     </Teleport>
 
@@ -88,6 +98,7 @@ onMounted(() => window.addEventListener('keydown', onKey))
 onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 const isOP      = computed(() => props.post.threadId === 'root')
+const isVideo   = computed(() => /^video\//i.test(props.post.mediaMime ?? '') || /\.(webm|mp4)$/i.test(props.post.mediaUrl ?? ''))
 const shortId   = computed(() => props.post.id.slice(0, 8))
 const formattedTime = computed(() => new Date(props.post.createdAt).toLocaleString('zh-TW'))
 
@@ -129,9 +140,10 @@ function handleContentClick(e) {
 .reply-btn:hover { color: #5b68c8; }
 .del-btn { background: none; border: none; color: #c00; font-size: 0.85rem; cursor: pointer; padding: 0 0.1rem; line-height: 1; opacity: 0.6; }
 .del-btn:hover { opacity: 1; }
-.post-media img { max-width: 200px; max-height: 200px; cursor: zoom-in; display: block; margin-bottom: 0.5rem; object-fit: contain; }
+.post-media img, .post-media video { max-width: 200px; max-height: 200px; cursor: zoom-in; display: block; margin-bottom: 0.5rem; object-fit: contain; }
 .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; cursor: zoom-out; }
 .lightbox img { max-width: 92vw; max-height: 92vh; object-fit: contain; cursor: default; border-radius: 2px; }
+.lightbox video { max-width: 92vw; max-height: 92vh; cursor: default; border-radius: 2px; }
 .post-content { font-size: 0.9rem; line-height: 1.5; word-break: break-word; }
 :deep(.greentext) { color: #789922; }
 :deep(.quote-link) { color: #8b98e8; cursor: pointer; text-decoration: none; }

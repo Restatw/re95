@@ -17,21 +17,24 @@ function _mediaToBlob(media) {
 }
 
 async function resolveMedia(post) {
-  if (!post.mediaCid) return null
-  if (_blobUrlCache.has(post.mediaCid)) return _blobUrlCache.get(post.mediaCid)
+  if (!post.mediaCid) return { url: null, mime: null }
+  const cached = _blobUrlCache.get(post.mediaCid)
+  if (cached) return cached
 
   const media = await db.media.get(post.mediaCid)
   if (media) {
     const url = URL.createObjectURL(_mediaToBlob(media))
-    _blobUrlCache.set(post.mediaCid, url)
-    return url
+    const result = { url, mime: media.mimeType }
+    _blobUrlCache.set(post.mediaCid, result)
+    return result
   }
 
-  return RELAY_MEDIA_URL(post.mediaCid)
+  return { url: RELAY_MEDIA_URL(post.mediaCid), mime: null }
 }
 
 async function hydrate(post) {
-  return { ...post, mediaUrl: await resolveMedia(post) }
+  const { url, mime } = await resolveMedia(post)
+  return { ...post, mediaUrl: url, mediaMime: mime }
 }
 
 export const usePostsStore = defineStore('posts', () => {
