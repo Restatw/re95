@@ -150,7 +150,10 @@ export function useSync() {
     state.syncing = true
     state.error   = null
     try {
-      const since = parseInt(localStorage.getItem(`sync:${board}`) ?? '0', 10)
+      const localCount = await db.posts.where({ board }).count()
+      const since = localCount > 0
+        ? parseInt(localStorage.getItem(`sync:${board}`) ?? '0', 10)
+        : 0
       const res   = await fetch(`${RELAY}/sync?since=${since}&board=${encodeURIComponent(board)}`)
       if (!res.ok) throw new Error(`relay GET /sync → ${res.status}`)
 
